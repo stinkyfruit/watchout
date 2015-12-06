@@ -7,8 +7,8 @@ var playerData = {
   cx: 40,
   cy: 70
 };
-var asteroidNumber = 6;
-var quickness = 3000;
+var asteroidNumber = 10;
+var quickness = 2000;
 
 var collisionCount = 0;
 var score = 0;
@@ -16,7 +16,7 @@ var highScore = 0;
 
 var updateScore = function(){
   d3.select('.scoreboard .current span').text(score);
-  d3.select('.scoreboard .highscore span').text(highScore);
+  d3.select('.scoreboard .high span').text(highScore);
   d3.select('.scoreboard .collisions span').text(collisionCount);
 };
 
@@ -26,8 +26,10 @@ var board = d3.select("body").append("svg")
   .attr('class', 'board')
   .attr("width", width)
   .attr("height", height)
-  .attr('fill', 'white')
-  .append("g");
+  .attr('fill', 'white');
+  //.append("g");
+
+var svgGroup = board.append('g');
 
 var makeAsteroidLocations = function(n) {
   var arr = [playerData];
@@ -65,6 +67,9 @@ var player = d3.select('g')
     return d.cy;
   })
   .attr("fill", "blue")
+  .attr("stroke", "black")
+  .attr("stroke-width", 2)
+
   .call(drag)
   .attr('class', 'player');
 
@@ -83,7 +88,10 @@ var asteroids = d3.select('g')
     return d.cy;
   })
   .attr("fill", "red")
-  .attr("class", "asteroid");
+  .attr("class", "asteroid")
+  .attr("stroke", "green")
+  .attr("stroke-width", 2);
+
 
 function move() {
   var movedAsteroids = asteroids
@@ -106,11 +114,14 @@ move();
 var scoreTicker = function(){
   score = score + 1;
   highScore = Math.max(score, highScore);
+
   updateScore();
 };
 setInterval(scoreTicker, 100);
 
+
 var previousCollision = false;
+
 var detectCollisions = function() {
   var collision = false;
 
@@ -135,12 +146,12 @@ var detectCollisions = function() {
   if (collision) {
     score = 0;
     console.log("collision");
-    board.attr('background-color', 'red');
+    board.attr('fill', 'red');
     if (prevCollision != collision) {
       collisionCount = collisionCount + 1;
     }
   } else {
-    board.attr('background-color', 'white');
+    board.attr('fill', 'white');
   }
   prevCollision = collision;
 };
