@@ -3,44 +3,35 @@
 var width = 960,
   height = 500;
 
-// box container for the game
-var svg = d3.select("body").append("svg")
-  .attr("width", width)
-  .attr("height", height)
-  .append("g");
+var playerData = {
+  cx: 40,
+  cy: 70
+};
+var asteroidNumber = 6;
+var quickness = 3000;
 
-var asteroidW = 300;
-var asteroidH = 300;
+var collisionCount = 0;
+var score = 0;
+var highScore = 0;
 
-var moveAsteroids = function() {
-
-
+var updateScore = function(){
+  d3.select('.scoreboard .current span').text(score);
+  d3.select('.scoreboard .highscore span').text(highScore);
+  d3.select('.scoreboard .collisions span').text(collisionCount);
 };
 
-setInterval(moveAsteroids);
 
-// DATA JOIN
-// Join new data with old elements, if any.
-//var text = svg.selectAll("text")
-//  .data(data, function(d) { return d; });
+// box container for the game
+var board = d3.select("body").append("svg")
+  .attr('class', 'board')
+  .attr("width", width)
+  .attr("height", height)
+  .attr('fill', 'white')
+  .append("g");
 
-// set up array of random start x and y for the asteroids
-// that is the asteroid data array
-// one object in the data array per asteroid
-
-// use function moveasteroids to
-// select the asteroids
-// randomly change x and y
-// have transition to move them without jumpiness
-
-// setinterval in the moveasteroids function
-var playerData = {cx: 40, cy: 70};
-var asteroidNumber = 6;
-
-
-var makeAsteroidLocations = function(n){
+var makeAsteroidLocations = function(n) {
   var arr = [playerData];
-  for(var i = 0; i < n; i++) {
+  for (var i = 0; i < n; i++) {
     arr.push({
       cx: Math.random() * width,
       cy: Math.random() * height
@@ -49,42 +40,33 @@ var makeAsteroidLocations = function(n){
   return arr;
 };
 
-// var asteroidLocations = makeAsteroidLocations(3);
-// var updateAsteroidLocations = makeAsteroidLocations(3);
-
-var test = [{cx: 40, cy: 70},{cx: 40, cy: 70},{cx: 40, cy: 70}];
+// var test = [{cx: 40, cy: 70},{cx: 40, cy: 70},{cx: 40, cy: 70}];
 
 function dragmove(d) {
-    d3.select(this)
-      .attr("cx", ((d3.event.sourceEvent.pageY) - this.offsetHeight/2)+"px")
-      .attr("cy", ((d3.event.sourceEvent.pageX) - this.offsetWidth/2)+"px");
+  d3.select(this)
+    .attr("cy", d3.event.y)
+    .attr("cx", d3.event.x);
 }
 
 var drag = d3.behavior.drag()
-    .on("drag", dragmove);
+  .on("drag", dragmove);
 
-//var drag = d3.behavior.drag(drag);
-// [{cx: 40, cy: 70}]
 var player = d3.select('g')
   .selectAll('svg') // tells d3 what we'll be working with
-  .data([playerData])// data attached to svgs (array of whatever)
+  .data([playerData]) // data attached to svgs (array of whatever)
   .enter()
   .append('svg')
   .append("circle")
   .attr("r", 30)
-  .attr("cx",  function(d) {
+  .attr("cx", function(d) {
     return d.cx;
   })
-//  debugger
-  .attr("cy",  function(d) {
+  .attr("cy", function(d) {
     return d.cy;
   })
   .attr("fill", "blue")
-  .call(drag);
-
-// creates a new drag behavior
-//player.call(drag);
-
+  .call(drag)
+  .attr('class', 'player');
 
 // this g is the inner wrapper of the gameplay box
 var asteroids = d3.select('g')
@@ -100,111 +82,68 @@ var asteroids = d3.select('g')
   .attr("cy", function(d) {
     return d.cy;
   })
-  .attr("fill", "red");
+  .attr("fill", "red")
+  .attr("class", "asteroid");
 
-
-var quickness = 3000;
-
-function move(){
-var movedAsteroids = d3.select('g')
-  .selectAll('circle')
-  .data(makeAsteroidLocations(asteroidNumber))
-//  .data(makeAsteroidLocations)
-  .transition().duration(quickness)
-  .attr("cx", function(d) {
-    return d.cx;
-  })
-  .attr("cy", function(d) {
-    return d.cy;
-  });
+function move() {
+  var movedAsteroids = asteroids
+    .data(makeAsteroidLocations(asteroidNumber))
+    //  .data(makeAsteroidLocations)
+    .transition().duration(quickness)
+    .attr("cx", function(d) {
+      return d.cx;
+    })
+    .attr("cy", function(d) {
+      return d.cy;
+    })
+    .each('end', function() {
+      move(d3.select(this));
+    });
 }
+
 move();
-setInterval(move, quickness);
 
-var img = svg.append("svg:image")
-  .attr("xlink:href", "asteroid.png");
+var scoreTicker = function(){
+  score = score + 1;
+  highScore = Math.max(score, highScore);
+  updateScore();
+};
+setInterval(scoreTicker, 100);
 
-//     svg
-//     g, g, g, g, g
+var previousCollision = false;
+var detectCollisions = function() {
+  var collision = false;
 
-// var Dancer = function(top, left, timeBetweenSteps) {
-//   // use jQuery to create an HTML <span> tag
-//   this.$node = $('<span class="dancer"></span>');
+  //get player position
+  var playCX = player.attr('cx');
+  var playCY = player.attr('cy');
 
-//   this.top = top;
-//   this.left = left;
-//   this.timeBetweenSteps = timeBetweenSteps;
+  asteroids.each(function() {
+    //center position
+// console.log(this.cx.animVal.value);
+// console.log(this.cy);
+//debugger
+    var newcx = this.cx.animVal.value + 20;
+    var newcy = this.cy.animVal.value + 20;
+    //distance between asteroid and mouse
+    var x = newcx - playCX;
+    var y = newcy - playCY;
+    if (Math.sqrt(x * x + y * y) < 50) {
+      collision = true;
+    }
+  });
+  if (collision) {
+    score = 0;
+    console.log("collision");
+    board.attr('background-color', 'red');
+    if (prevCollision != collision) {
+      collisionCount = collisionCount + 1;
+    }
+  } else {
+    board.attr('background-color', 'white');
+  }
+  prevCollision = collision;
+};
 
-//   var dancer = new dancerMakerFunction(
-//     $("body").height() * Math.random(),
-//     $("body").width() * Math.random(),
-//     500 + Math.random() * 500
-//   );
-
-
-// var circle = svg.selectAll("circle")
-//     .data(d3.range(1000).map(function() {
-//       return {
-//         x: w * Math.random(),
-//         y: h * Math.random(),
-//         dx: Math.random() - .5,
-//         dy: Math.random() - .5
-//       };
-//     }))
-//       .enter().append("svg:circle")
-//     .attr("r", 2.5);
-
-
-// SVG (box)
-// g (wrapper insdie the box)
-// svg svg svg
-
-// var alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
-
-// var width = 960,
-//     height = 500;
-
-// var svg = d3.select("body").append("svg")
-//     .attr("width", width)
-//     .attr("height", height)
-//   .append("g")
-//     .attr("transform", "translate(32," + (height / 2) + ")");
-
-// function update(data) {
-
-//   // DATA JOIN
-//   // Join new data with old elements, if any.
-//   var text = svg.selectAll("text")
-//       .data(data);
-
-//   // UPDATE
-//   // Update old elements as needed.
-//   text.attr("class", "update");
-
-//   // ENTER
-//   // Create new elements as needed.
-//   text.enter().append("text")
-//       .attr("class", "enter")
-//       .attr("x", function(d, i) { return i * 32; })
-//       .attr("dy", ".35em");
-
-//   // ENTER + UPDATE
-//   // Appending to the enter selection expands the update selection to include
-//   // entering elements; so, operations on the update selection after appending to
-//   // the enter selection will apply to both entering and updating nodes.
-//   text.text(function(d) { return d; });
-
-//   // EXIT
-//   // Remove old elements as needed.
-//   text.exit().remove();
-// }
-
-// // The initial display.
-// update(alphabet);
-
-// // Grab a random sample of letters from the alphabet, in alphabetical order.
-// setInterval(function() {
-//   update(d3.shuffle(alphabet)
-//     .slice(0, Math.floor(Math.random() * 26))
-//     .sort());
-// }, 1500);
+d3.timer(detectCollisions);
+// setInterval(move, quickness);
